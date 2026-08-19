@@ -371,6 +371,123 @@
       .stats-grid { grid-template-columns: 1fr; }
       .container { padding: 12px 12px 36px; }
     }
+
+    /* ── Classic sky-blue desktop theme ── */
+    :root {
+      --bg-primary: #ccecff;
+      --bg-secondary: #ffffff;
+      --bg-card: #ffffff;
+      --bg-card-hover: #eefaff;
+      --border-subtle: #75bfe8;
+      --border-accent: #006a9f;
+      --text-primary: #102a3b;
+      --text-secondary: #31566b;
+      --text-muted: #547487;
+      --accent-indigo: #006a9f;
+      --accent-indigo-bright: #005784;
+      --accent-emerald: #087443;
+      --accent-rose: #a12f2f;
+      --accent-amber: #8a5600;
+      --accent-sky: #005f94;
+      --gradient-header: linear-gradient(#eaf9ff 0%, #94d7fa 48%, #dff5ff 100%);
+      --shadow-card: 3px 3px 0 rgba(28, 90, 120, 0.18);
+      --shadow-glow: none;
+      --radius-lg: 0;
+      --radius-md: 0;
+      --radius-sm: 0;
+    }
+    body {
+      font-family: "Courier New", Courier, monospace;
+      background-color: var(--bg-primary);
+      background-image: linear-gradient(rgba(255,255,255,.45) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.45) 1px, transparent 1px);
+      background-size: 18px 18px;
+      color: var(--text-primary);
+    }
+    body::before { display: none; }
+    .container { max-width: 1100px; padding-top: 18px; }
+    .header, .table-container, .repair-card, .empty-state {
+      background: var(--bg-card);
+      border: 2px solid #236b91;
+      box-shadow: var(--shadow-card);
+      backdrop-filter: none;
+    }
+    .header { background: var(--gradient-header); padding: 24px 28px; }
+    .header::after { display: none; }
+    .header-icon { background: #ffffff; border: 2px solid #237aa7; border-radius: 0; box-shadow: 2px 2px 0 #74bfe4; }
+    h1 {
+      color: #004c77;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(1.55rem, 3.5vw, 2.25rem);
+      letter-spacing: 0;
+      -webkit-text-fill-color: currentColor;
+      background: none;
+    }
+    .header-subtitle { color: #184b68; font-family: Georgia, "Times New Roman", serif; }
+    .badge, .section-title .count, .seniority-badge, .work-model-badge, .repair-outcome, .tag { border-radius: 0; font-family: "Courier New", Courier, monospace; }
+    .badge-live { color: #075a35; border-color: #41926e; background: #e8fff1; }
+    .badge-source { color: #005d91; border-color: #4ca6d2; background: #edfaff; }
+    .badge-ai { color: #744500; border-color: #c99832; background: #fff7df; }
+    .stats-grid { gap: 10px; }
+    .stat-card { background: #ffffff; border: 2px outset #b3ddf2; border-radius: 0; box-shadow: none; padding: 15px; }
+    .stat-card:hover { background: #f3fbff; border-color: #237aa7; box-shadow: none; transform: none; }
+    .stat-card .label, thead th { color: #245b79; }
+    .stat-card.status-success .value { color: #087443; }
+    .stat-card.status-failed .value { color: #9b3030; }
+    .stat-card.status-neutral .value { color: #31566b; }
+    .stat-card.status-accent .value { color: #005d91; }
+    .stat-card.status-amber .value { color: #8a5600; }
+    .section-title h2 { font-family: Georgia, "Times New Roman", serif; color: #004c77; }
+    .section-title .count { color: #005d91; background: #edfaff; border-color: #71bfe8; }
+    thead th { background: #a9ddf7; border-bottom: 2px solid #237aa7; }
+    tbody td { border-bottom-color: #b9def0; }
+    tbody tr:hover td { background: #eefaff; }
+    td a { color: #005d91; text-decoration: underline; }
+    td a:hover { color: #003e63; }
+    .company-cell { color: #244c63; }
+    .location-cell, .date-cell { color: #476b7f; }
+    .seniority-badge { color: #005d91; background: #e9f8ff; border-color: #72bde5; }
+    .work-model-remote { color: #075a35; background: #e7fff0; border-color: #63b98e; }
+    .work-model-hybrid { color: #744500; background: #fff8e5; border-color: #d7ad56; }
+    .work-model-onsite { color: #31566b; background: #edf5f8; border-color: #9bc3d8; }
+    .tag { color: #31566b; background: #f3fbff; border-color: #a9d4e9; }
+    .tag:hover { color: #004c77; background: #dff4ff; border-color: #4ca6d2; }
+    .skill-tag { color: #075a35; background: #edfff4; border-color: #8bcdaa; }
+    .skill-tag:hover { color: #075a35; border-color: #4b9f76; }
+    .repair-card { padding: 14px 16px; }
+    .repair-card:hover { border-color: #237aa7; transform: none; }
+    .outcome-repaired { color: #075a35; background: #e7fff0; border-color: #63b98e; }
+    .outcome-failed { color: #912d2d; background: #fff0f0; border-color: #d98b8b; }
+    .repair-id, .repair-model { color: #315d76; }
+    .repair-trigger, .dialog-close {
+      appearance: none; border: 2px outset #abd9ef; background: #dff4ff; color: #004c77; cursor: pointer;
+      font: 700 0.72rem "Courier New", Courier, monospace; padding: 6px 10px; margin-left: auto;
+    }
+    .repair-trigger:hover, .dialog-close:hover { background: #ffffff; }
+    .repair-trigger:focus-visible, .dialog-close:focus-visible { outline: 3px solid #e2a93f; outline-offset: 2px; }
+    .repair-dialog {
+      width: min(620px, calc(100% - 28px)); color: #102a3b; background: #ffffff; border: 3px solid #17628d;
+      box-shadow: 6px 6px 0 rgba(5, 75, 112, .3); padding: 0; font-family: "Courier New", Courier, monospace;
+    }
+    .repair-dialog::backdrop { background: rgba(0, 57, 87, .38); }
+    .dialog-title { background: #9ed9f8; border-bottom: 2px solid #17628d; color: #004c77; font: 700 1.05rem Georgia, "Times New Roman", serif; padding: 13px 16px; }
+    .dialog-body { padding: 16px; }
+    .dialog-grid { display: grid; grid-template-columns: 130px 1fr; gap: 8px 14px; margin: 14px 0; font-size: .8rem; }
+    .dialog-grid dt { color: #315d76; font-weight: 700; }
+    .dialog-grid dd { margin: 0; overflow-wrap: anywhere; }
+    .dialog-summary { background: #eefaff; border: 1px solid #9bcee6; padding: 10px; font-size: .8rem; }
+    .validation-detail { max-height: 160px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; background: #f7fcff; border: 1px solid #b9ddec; padding: 10px; font: .72rem "Courier New", Courier, monospace; }
+    .dialog-actions { display: flex; justify-content: flex-end; border-top: 1px solid #b9ddec; padding: 12px 16px; }
+    .dialog-close { margin-left: 0; }
+    .empty-state { border-style: dashed; background: #ffffff; }
+    .empty-state code { color: #004c77; background: #e9f8ff; border-color: #72bde5; border-radius: 0; }
+    footer { color: #315d76; border-top-color: #75bfe8; }
+    footer a { color: #005d91; text-decoration: underline; }
+    @media (max-width: 640px) {
+      .repair-header { align-items: flex-start; flex-wrap: wrap; }
+      .repair-trigger { margin-left: 0; }
+      .dialog-grid { grid-template-columns: 1fr; gap: 3px; }
+      .dialog-grid dt { margin-top: 8px; }
+    }
   </style>
 </head>
 <body>
@@ -458,6 +575,7 @@
           <span class="repair-outcome {{ 'outcome-repaired' if repair.outcome == 'repaired' else 'outcome-failed' }}">{{ repair.outcome }}</span>
           <span class="repair-id">{{ repair.external_id }}</span>
           {% if repair.model %}<span class="repair-model">{{ repair.model }}</span>{% endif %}
+          <button class="repair-trigger" type="button" data-dialog-id="repair-detail-{{ repair.id }}" aria-haspopup="dialog">View LLM work</button>
         </div>
         {% if repair.repaired_fields %}
         <div class="repair-fields">
@@ -465,6 +583,30 @@
         </div>
         {% endif %}
       </div>
+      <dialog class="repair-dialog" id="repair-detail-{{ repair.id }}" aria-labelledby="repair-title-{{ repair.id }}">
+        <h3 class="dialog-title" id="repair-title-{{ repair.id }}">LLM repair details</h3>
+        <div class="dialog-body">
+          <p class="dialog-summary">
+            {% if repair.outcome == 'repaired' %}
+              The LLM read the source record after validation failed, extracted the missing values below, and the repaired listing passed validation.
+            {% elif repair.outcome == 'still_invalid' %}
+              The LLM returned a repair attempt, but the resulting listing still did not satisfy the required schema.
+            {% else %}
+              The LLM was called after validation failed, but no usable repair was returned.
+            {% endif %}
+          </p>
+          <dl class="dialog-grid">
+            <dt>Listing ID</dt><dd>{{ repair.external_id }}</dd>
+            <dt>Model used</dt><dd>{{ repair.model or 'Not recorded' }}</dd>
+            <dt>Outcome</dt><dd>{{ repair.outcome | replace('_', ' ') | title }}</dd>
+            <dt>Fields returned</dt>
+            <dd>{% if repair.repaired_fields %}{% for field in repair.repaired_fields %}<span class="tag">{{ field }}</span>{% endfor %}{% else %}No usable fields returned{% endif %}</dd>
+          </dl>
+          <p class="repair-fields">Original validation issue</p>
+          <pre class="validation-detail">{{ repair.validation_error }}</pre>
+        </div>
+        <form method="dialog" class="dialog-actions"><button class="dialog-close" type="submit">Close</button></form>
+      </dialog>
       {% endfor %}
     </section>
     {% endif %}
@@ -537,5 +679,17 @@
       Job Ingestion Pipeline · Source: <a href="https://remoteok.com/api" rel="noreferrer">RemoteOK Public API</a> · No ToS-protected sites scraped · Built with FastAPI + SQLite
     </footer>
   </div>
+  <script>
+    document.querySelectorAll('[data-dialog-id]').forEach((trigger) => {
+      trigger.addEventListener('click', () => {
+        document.getElementById(trigger.dataset.dialogId).showModal();
+      });
+    });
+    document.querySelectorAll('.repair-dialog').forEach((dialog) => {
+      dialog.addEventListener('click', (event) => {
+        if (event.target === dialog) dialog.close();
+      });
+    });
+  </script>
 </body>
 </html>

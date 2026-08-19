@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Job Ingestion Dashboard — Pipeline Proof of Life</title>
+  <meta name="description" content="Live proof-of-life dashboard for the RemoteOK job ingestion pipeline with LLM fallback repair tracking">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    /* ── Design Tokens ── */
+    :root {
+      --bg-primary: #0a0e1a;
+      --bg-secondary: #111827;
+      --bg-card: rgba(17, 24, 39, 0.7);
+      --bg-card-hover: rgba(30, 41, 59, 0.8);
+      --bg-glass: rgba(255,255,255,0.04);
+      --border-subtle: rgba(255,255,255,0.06);
+      --border-accent: rgba(99,102,241,0.3);
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent-indigo: #818cf8;
+      --accent-indigo-bright: #a5b4fc;
+      --accent-emerald: #34d399;
+      --accent-rose: #fb7185;
+      --accent-amber: #fbbf24;
+      --accent-sky: #38bdf8;
+      --gradient-header: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e1b4b 100%);
+      --gradient-success: linear-gradient(135deg, #064e3b, #065f46);
+      --gradient-fail: linear-gradient(135deg, #7f1d1d, #991b1b);
+      --shadow-card: 0 4px 24px rgba(0,0,0,0.3);
+      --shadow-glow: 0 0 40px rgba(99,102,241,0.08);
+      --radius-lg: 16px;
+      --radius-md: 10px;
+      --radius-sm: 6px;
+      --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* ── Reset & Base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: -1;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99,102,241,0.12), transparent),
+        radial-gradient(ellipse 60% 40% at 80% 80%, rgba(52,211,153,0.06), transparent);
+    }
+
+    /* ── Layout ── */
+    .container { max-width: 1200px; margin: 0 auto; padding: 24px 20px 48px; }
+
+    /* ── Header ── */
+    .header {
+      background: var(--gradient-header);
+      border: 1px solid var(--border-accent);
+      border-radius: var(--radius-lg);
+      padding: 32px 36px;
+      margin-bottom: 28px;
+      box-shadow: var(--shadow-glow);
+      position: relative;
+      overflow: hidden;
+    }
+    .header::after {
+      content: '';
+      position: absolute; top: 0; right: 0; width: 300px; height: 100%;
+      background: radial-gradient(circle at 80% 50%, rgba(129,140,248,0.15), transparent 70%);
+      pointer-events: none;
+    }
+    .header-top { display: flex; align-items: center; gap: 14px; margin-bottom: 8px; }
+    .header-icon {
+      width: 42px; height: 42px;
+      background: rgba(129,140,248,0.2);
+      border: 1px solid rgba(129,140,248,0.4);
+      border-radius: var(--radius-md);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem;
+    }
+    h1 {
+      font-size: clamp(1.5rem, 3.5vw, 2rem);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #e0e7ff, #a5b4fc);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .header-subtitle {
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+      max-width: 600px;
+    }
+    .header-badges { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 12px;
+      font-size: 0.7rem; font-weight: 600;
+      letter-spacing: 0.06em; text-transform: uppercase;
+      border-radius: 999px;
+      border: 1px solid;
+    }
+    .badge-live { color: var(--accent-emerald); border-color: rgba(52,211,153,0.3); background: rgba(52,211,153,0.1); }
+    .badge-live::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--accent-emerald); animation: pulse-dot 2s ease-in-out infinite; }
+    .badge-source { color: var(--accent-sky); border-color: rgba(56,189,248,0.3); background: rgba(56,189,248,0.1); }
+    .badge-ai { color: var(--accent-amber); border-color: rgba(251,191,36,0.3); background: rgba(251,191,36,0.1); }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(1.4); }
+    }
+
+    /* ── Stats Grid ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 14px;
+      margin-bottom: 28px;
+    }
+    .stat-card {
+      background: var(--bg-card);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 18px 20px;
+      transition: all var(--transition);
+      position: relative;
+      overflow: hidden;
+    }
+    .stat-card:hover {
+      border-color: var(--border-accent);
+      background: var(--bg-card-hover);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-card);
+    }
+    .stat-card .label {
+      font-size: 0.68rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+    .stat-card .value {
+      font-size: 1.6rem; font-weight: 800;
+      font-family: 'JetBrains Mono', monospace;
+      letter-spacing: -0.02em;
+    }
+    .stat-card .detail {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+    .stat-card.status-success .value { color: var(--accent-emerald); }
+    .stat-card.status-failed .value { color: var(--accent-rose); }
+    .stat-card.status-neutral .value { color: var(--text-secondary); }
+    .stat-card.status-accent .value { color: var(--accent-indigo-bright); }
+    .stat-card.status-amber .value { color: var(--accent-amber); }
+
+    .stat-card::before {
+      content: ''; position: absolute; top: 0; left: 0;
+      width: 100%; height: 3px;
+    }
+    .stat-card.status-success::before { background: linear-gradient(90deg, var(--accent-emerald), transparent); }
+    .stat-card.status-failed::before { background: linear-gradient(90deg, var(--accent-rose), transparent); }
+    .stat-card.status-accent::before { background: linear-gradient(90deg, var(--accent-indigo), transparent); }
+    .stat-card.status-amber::before { background: linear-gradient(90deg, var(--accent-amber), transparent); }
+
+    /* ── Section Titles ── */
+    .section-title {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 16px;
+    }
+    .section-title h2 {
+      font-size: 1rem; font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+    .section-title .count {
+      font-size: 0.7rem; font-weight: 600;
+      color: var(--accent-indigo);
+      background: rgba(99,102,241,0.1);
+      border: 1px solid rgba(99,102,241,0.2);
+      padding: 2px 10px;
+      border-radius: 999px;
+    }
+
+    /* ── Table ── */
+    .table-container {
+      background: var(--bg-card);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: var(--shadow-card);
+      margin-bottom: 28px;
+    }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 800px; }
+    thead th {
+      padding: 14px 16px;
+      font-size: 0.68rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--text-muted);
+      background: rgba(0,0,0,0.3);
+      text-align: left;
+      border-bottom: 1px solid var(--border-subtle);
+      position: sticky; top: 0;
+    }
+    tbody td {
+      padding: 14px 16px;
+      font-size: 0.84rem;
+      border-bottom: 1px solid var(--border-subtle);
+      vertical-align: top;
+      transition: background var(--transition);
+    }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: rgba(99,102,241,0.04); }
+
+    td a {
+      color: var(--accent-indigo-bright);
+      text-decoration: none;
+      font-weight: 500;
+      transition: color var(--transition);
+    }
+    td a:hover { color: #c7d2fe; text-decoration: underline; text-underline-offset: 3px; }
+
+    .company-cell { color: var(--text-secondary); font-weight: 500; }
+    .location-cell { color: var(--text-muted); }
+    .date-cell {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+    .seniority-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      font-size: 0.65rem; font-weight: 600;
+      border-radius: 999px;
+      text-transform: capitalize;
+      color: var(--accent-sky);
+      background: rgba(56,189,248,0.1);
+      border: 1px solid rgba(56,189,248,0.2);
+    }
+    .work-model-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      font-size: 0.65rem; font-weight: 600;
+      border-radius: 999px;
+      text-transform: capitalize;
+    }
+    .work-model-remote { color: var(--accent-emerald); background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.2); }
+    .work-model-hybrid { color: var(--accent-amber); background: rgba(251,191,36,0.1); border: 1px solid rgba(251,191,36,0.2); }
+    .work-model-onsite { color: var(--text-secondary); background: rgba(148,163,184,0.1); border: 1px solid rgba(148,163,184,0.2); }
+
+    /* ── Tags ── */
+    .tag {
+      display: inline-block;
+      margin: 2px 3px 2px 0;
+      padding: 2px 8px;
+      font-size: 0.65rem; font-weight: 500;
+      color: var(--text-secondary);
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border-subtle);
+      border-radius: 4px;
+      transition: all var(--transition);
+    }
+    .tag:hover {
+      color: var(--accent-indigo-bright);
+      border-color: var(--border-accent);
+      background: rgba(99,102,241,0.08);
+    }
+    .skill-tag {
+      color: var(--accent-emerald);
+      background: rgba(52,211,153,0.08);
+      border-color: rgba(52,211,153,0.2);
+    }
+    .skill-tag:hover {
+      color: #6ee7b7;
+      border-color: rgba(52,211,153,0.4);
+    }
+
+    /* ── LLM Repairs Section ── */
+    .repairs-section { margin-bottom: 28px; }
+    .repair-card {
+      background: var(--bg-card);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 16px 20px;
+      margin-bottom: 10px;
+      transition: all var(--transition);
+    }
+    .repair-card:hover {
+      border-color: rgba(251,191,36,0.3);
+      transform: translateY(-1px);
+    }
+    .repair-header {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 8px;
+    }
+    .repair-outcome {
+      font-size: 0.68rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      padding: 2px 10px;
+      border-radius: 999px;
+    }
+    .outcome-repaired { color: var(--accent-emerald); background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.2); }
+    .outcome-failed { color: var(--accent-rose); background: rgba(251,113,133,0.1); border: 1px solid rgba(251,113,133,0.2); }
+    .repair-id {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+    .repair-fields {
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+    }
+    .repair-model {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* ── Empty State ── */
+    .empty-state {
+      text-align: center;
+      padding: 60px 24px;
+      background: var(--bg-card);
+      border: 1px dashed rgba(99,102,241,0.3);
+      border-radius: var(--radius-lg);
+    }
+    .empty-state .icon { font-size: 2.5rem; margin-bottom: 12px; opacity: 0.5; }
+    .empty-state p { color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 8px; }
+    .empty-state code {
+      font-family: 'JetBrains Mono', monospace;
+      background: rgba(99,102,241,0.1);
+      border: 1px solid rgba(99,102,241,0.2);
+      padding: 4px 10px;
+      border-radius: var(--radius-sm);
+      font-size: 0.82rem;
+      color: var(--accent-indigo-bright);
+    }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center;
+      padding: 18px;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      border-top: 1px solid var(--border-subtle);
+      margin-top: 12px;
+    }
+    footer a { color: var(--accent-indigo); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    /* ── Responsive ── */
+    @media (max-width: 900px) {
+      .stats-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (max-width: 640px) {
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .header { padding: 24px 20px; }
+    }
+    @media (max-width: 420px) {
+      .stats-grid { grid-template-columns: 1fr; }
+      .container { padding: 12px 12px 36px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- ── Header ── -->
+    <header class="header" id="header">
+      <div class="header-top">
+        <div class="header-icon">⚡</div>
+        <h1>Job Ingestion Pipeline</h1>
+      </div>
+      <p class="header-subtitle">
+        RemoteOK JSON API → httpx async fetch with retry &amp; pacing → Pydantic validation → LLM fallback repair → SQLite upsert
+      </p>
+      <div class="header-badges">
+        <span class="badge badge-live">Live Demo</span>
+        <span class="badge badge-source">RemoteOK API</span>
+        {% if last_run and last_run.llm_calls_used > 0 %}<span class="badge badge-ai">LLM Fallback Active</span>{% endif %}
+      </div>
+    </header>
+
+    <!-- ── Stats Grid ── -->
+    <section class="stats-grid" id="stats">
+      <div class="stat-card {{ 'status-success' if last_run and last_run.status == 'success' else ('status-failed' if last_run else 'status-neutral') }}">
+        <div class="label">Last Run Status</div>
+        {% if last_run %}
+          <div class="value">{{ last_run.status | upper }}</div>
+          <div class="detail">{{ last_run.finished_at.strftime('%b %d, %Y · %H:%M UTC') if last_run.finished_at else '—' }}</div>
+        {% else %}
+          <div class="value">—</div>
+          <div class="detail">Pipeline not executed yet</div>
+        {% endif %}
+      </div>
+
+      <div class="stat-card status-accent">
+        <div class="label">Current Streak</div>
+        {% if last_run %}
+          <div class="value">{{ streak }}</div>
+          <div class="detail">consecutive {{ last_run.status }} run{{ '' if streak == 1 else 's' }}</div>
+        {% else %}
+          <div class="value">—</div>
+          <div class="detail">No data</div>
+        {% endif %}
+      </div>
+
+      <div class="stat-card status-accent">
+        <div class="label">Total Stored</div>
+        <div class="value">{{ total_listings }}</div>
+        <div class="detail">unique listings in database</div>
+      </div>
+
+      <div class="stat-card {{ 'status-success' if last_run and last_run.invalid_count == 0 else ('status-failed' if last_run and last_run.invalid_count > 0 else 'status-neutral') }}">
+        <div class="label">Stored / Invalid</div>
+        {% if last_run %}
+          <div class="value">{{ last_run.stored_count }} / {{ last_run.invalid_count }}</div>
+          <div class="detail">{{ last_run.fetched_count }} payload items fetched</div>
+        {% else %}
+          <div class="value">—</div>
+          <div class="detail">No data</div>
+        {% endif %}
+      </div>
+
+      <div class="stat-card status-amber">
+        <div class="label">LLM Fallback Calls</div>
+        {% if last_run %}
+          <div class="value">{{ last_run.llm_calls_used }}</div>
+          <div class="detail">repair attempts this run</div>
+        {% else %}
+          <div class="value">—</div>
+          <div class="detail">Disabled by default</div>
+        {% endif %}
+      </div>
+    </section>
+
+    <!-- ── LLM Repair Log ── -->
+    {% if llm_repairs %}
+    <section class="repairs-section" id="repairs">
+      <div class="section-title">
+        <h2>🔧 LLM Repair Log</h2>
+        <span class="count">{{ llm_repairs | length }} attempt{{ '' if llm_repairs | length == 1 else 's' }}</span>
+      </div>
+      {% for repair in llm_repairs %}
+      <div class="repair-card">
+        <div class="repair-header">
+          <span class="repair-outcome {{ 'outcome-repaired' if repair.outcome == 'repaired' else 'outcome-failed' }}">{{ repair.outcome }}</span>
+          <span class="repair-id">{{ repair.external_id }}</span>
+          {% if repair.model %}<span class="repair-model">{{ repair.model }}</span>{% endif %}
+        </div>
+        {% if repair.repaired_fields %}
+        <div class="repair-fields">
+          Repaired fields: {% for f in repair.repaired_fields %}<span class="tag">{{ f }}</span>{% endfor %}
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </section>
+    {% endif %}
+
+    <!-- ── Job Listings Table ── -->
+    <section id="listings">
+      <div class="section-title">
+        <h2>Latest Listings</h2>
+        {% if jobs %}<span class="count">showing {{ jobs | length }}</span>{% endif %}
+      </div>
+
+      {% if jobs %}
+      <div class="table-container">
+        <div class="table-wrap">
+          <table aria-label="Recent job listings">
+            <thead>
+              <tr>
+                <th>Role</th>
+                <th>Company</th>
+                <th>Location</th>
+                <th>Seniority</th>
+                <th>Tags & Skills</th>
+                <th>Posted</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for job in jobs %}
+              <tr>
+                <td>
+                  <a href="{{ job.url }}" rel="noreferrer" target="_blank">{{ job.title }}</a>
+                  {% if job.work_model %}
+                    <br><span class="work-model-badge work-model-{{ job.work_model }}">{{ job.work_model }}</span>
+                  {% endif %}
+                </td>
+                <td class="company-cell">{{ job.company }}</td>
+                <td class="location-cell">{{ job.location or '—' }}</td>
+                <td>
+                  {% if job.seniority %}
+                    <span class="seniority-badge">{{ job.seniority }}</span>
+                  {% else %}
+                    <span style="color: var(--text-muted)">—</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if job.tags %}
+                    {% for tag in job.tags[:3] %}<span class="tag">{{ tag }}</span>{% endfor %}
+                  {% endif %}
+                  {% if job.extracted_skills %}
+                    {% for skill in job.extracted_skills[:3] %}<span class="tag skill-tag">{{ skill }}</span>{% endfor %}
+                  {% endif %}
+                  {% if not job.tags and not job.extracted_skills %}—{% endif %}
+                </td>
+                <td class="date-cell">{{ job.posted_at.strftime('%b %d, %Y') if job.posted_at else '—' }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% else %}
+      <div class="empty-state">
+        <div class="icon">📋</div>
+        <p>No listings yet. Run the pipeline to populate the dashboard:</p>
+        <p><code>python -m src.pipeline</code></p>
+      </div>
+      {% endif %}
+    </section>
+
+    <footer>
+      Job Ingestion Pipeline · Source: <a href="https://remoteok.com/api" rel="noreferrer">RemoteOK Public API</a> · No ToS-protected sites scraped · Built with FastAPI + SQLite
+    </footer>
+  </div>
+</body>
+</html>

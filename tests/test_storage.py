@@ -5,6 +5,16 @@ from src.models import JobListing
 from src.storage import JobRow, initialize_database, make_engine, upsert_jobs
 
 
+def test_postgresql_urls_use_psycopg_driver():
+    engine = make_engine("postgresql://user:password@localhost/jobs")
+
+    try:
+        assert engine.dialect.name == "postgresql"
+        assert engine.url.drivername == "postgresql+psycopg"
+    finally:
+        engine.dispose()
+
+
 def test_sqlite_upsert_updates_instead_of_duplicating(tmp_path):
     database_url = f"sqlite:///{tmp_path / 'jobs.db'}"
     initialize_database(database_url)

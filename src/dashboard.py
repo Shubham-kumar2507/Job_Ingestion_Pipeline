@@ -10,7 +10,13 @@ from fastapi.templating import Jinja2Templates
 from .storage import dashboard_data, initialize_database
 
 load_dotenv()
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///job_listings.db")
+
+
+def _default_database_url() -> str:
+    return "sqlite:////tmp/job_listings.db" if os.getenv("VERCEL") else "sqlite:///job_listings.db"
+
+
+DATABASE_URL = os.getenv("DATABASE_URL") or _default_database_url()
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 app = FastAPI(title="Job ingestion demo")
 

@@ -49,7 +49,7 @@ RemoteOK JSON API
     → Pydantic JobListing validation
     → [opt-in] LLM fallback repair on validation failure
     → deterministic enrichment (skills, seniority, work model)
-    → SQLite upsert on (source, external_id)
+    → SQLite or PostgreSQL upsert on (source, external_id)
 ```
 
 **Required normalized fields** (`source`, `external_id`, `title`, `company`, `url`) reject malformed records with a loud validation error. Optional fields (`description`, `location`, `salary_*`, `tags`, etc.) degrade gracefully to `None`, preserving partial records without crashing the pipeline.
@@ -111,6 +111,22 @@ A thin FastAPI + Jinja2 page (premium dark-mode design with glassmorphism) showi
 Endpoints:
 - `GET /` — HTML dashboard
 - `GET /health` — JSON health check (`{"status": "ok", "timestamp": "..."}`)
+
+## Deploy to Vercel
+
+The FastAPI dashboard is deployed as a Vercel Python Function. Import this
+repository with its root directory set to the repository root; Vercel reads
+the app entrypoint and runtime dependencies from `pyproject.toml`.
+
+Set `DATABASE_URL` in the Vercel project to a PostgreSQL connection URL. The
+dashboard creates missing tables on its first request. The pipeline is a
+separate process and does not run automatically on Vercel; set the same
+`DATABASE_URL` locally before running `python -m src.pipeline` to populate
+the dashboard.
+
+Without `DATABASE_URL`, Vercel uses a temporary SQLite database under `/tmp`.
+That is useful for a smoke test, but its data is not durable. Do not commit
+database URLs or API keys.
 
 ## Design document
 

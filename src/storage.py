@@ -1,7 +1,9 @@
 from datetime import datetime, timezone
 
 from sqlalchemy import JSON, DateTime, Integer, String, Text, UniqueConstraint, create_engine, select
-from sqlalchemy.dialects.sqlite import insert
+from sqlalchemy.dialects.postgresql import insert as postgresql_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+from sqlalchemy.engine import make_url
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 
 from .models import JobListing
@@ -69,7 +71,10 @@ class LLMRepairRow(Base):
 
 
 def make_engine(database_url: str):
-    return create_engine(database_url, pool_pre_ping=True)
+    url = make_url(database_url)
+    if url.drivername in ("postgres", "postgresql"):
+        url = url.set(drivername="postgresql+psycopg")
+    return create_engine(url, pool_pre_ping=True)
 
 
 def initialize_database(database_url: str) -> None:
@@ -183,10 +188,16 @@ def dashboard_data(database_url: str, limit: int = 20) -> tuple[list[JobRow], In
 
 
 def upsert_jobs(database_url: str, jobs: list[JobListing]) -> int:
-    """Insert new jobs and update source records using SQLite's unique key."""
+    """Insert new jobs and update existing records using the database's unique key."""
     if not jobs:
         return 0
     engine = make_engine(database_url)
+    if engine.dialect.name == "sqlite":
+        insert_statement = sqlite_insert
+    elif engine.dialect.name == "postgresql":
+        insert_statement = postgresql_insert
+    else:
+        raise ValueError(f"Unsupported database dialect for job upserts: {engine.dialect.name}")
     now = datetime.now(timezone.utc)
     rows = [
         {
@@ -196,7 +207,7 @@ def upsert_jobs(database_url: str, jobs: list[JobListing]) -> int:
         }
         for job in jobs
     ]
-    statement = insert(JobRow).values(rows)
+    statement = insert_statement(JobRow).values(rows)
     update_columns = {
         column: statement.excluded[column]
         for column in (

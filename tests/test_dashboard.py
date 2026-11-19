@@ -4,6 +4,12 @@ import src.dashboard as dashboard
 from src.storage import finish_run, initialize_database, record_llm_repair, start_run
 
 
+def test_vercel_uses_writable_temporary_sqlite_database(monkeypatch):
+    monkeypatch.setenv("VERCEL", "1")
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    assert dashboard._default_database_url() == "sqlite:////tmp/job_listings.db"
+
+
 def test_dashboard_renders_clickable_llm_repair_details(tmp_path, monkeypatch):
     database_url = f"sqlite:///{tmp_path / 'dashboard.db'}"
     monkeypatch.setattr(dashboard, "DATABASE_URL", database_url)

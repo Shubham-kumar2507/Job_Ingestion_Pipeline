@@ -96,6 +96,7 @@ def test_gemini_repair_returns_extracted_fields():
     with patch.dict("os.environ", {"GEMINI_API_KEY": "test-key"}, clear=False):
         with patch("src.llm_fallback.genai.Client") as MockGemini:
             mock_client = MagicMock()
+            mock_client.__enter__.return_value = mock_client
             mock_client.interactions.create.return_value = response
             MockGemini.return_value = mock_client
 

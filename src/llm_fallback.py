@@ -97,12 +97,13 @@ class LLMFallback:
         started = time.perf_counter()
         try:
             if self.provider == "gemini":
-                interaction = genai.Client(api_key=os.environ["GEMINI_API_KEY"]).interactions.create(
-                    model=self.model,
-                    system_instruction=messages[0]["content"],
-                    input=messages[1]["content"],
-                    response_format=GEMINI_RESPONSE_FORMAT,
-                )
+                with genai.Client(api_key=os.environ["GEMINI_API_KEY"]) as client:
+                    interaction = client.interactions.create(
+                        model=self.model,
+                        system_instruction=messages[0]["content"],
+                        input=messages[1]["content"],
+                        response_format=GEMINI_RESPONSE_FORMAT,
+                    )
                 fields = json.loads(interaction.output_text or "{}")
                 usage = getattr(interaction, "usage", None)
                 input_tokens = getattr(usage, "total_input_tokens", None)

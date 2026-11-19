@@ -128,6 +128,15 @@ Without `DATABASE_URL`, Vercel uses a temporary SQLite database under `/tmp`.
 That is useful for a smoke test, but its data is not durable. Do not commit
 database URLs or API keys.
 
+### Automate ingestion
+
+The GitHub Actions workflow at `.github/workflows/ingest.yml` polls the
+RemoteOK feed every 15 minutes (best effort; scheduled runs can be delayed).
+In the repository, open **Settings → Secrets and variables → Actions** and add
+a repository secret named `DATABASE_URL` with the same PostgreSQL connection
+URL used by Vercel. Then open **Actions → Ingest RemoteOK jobs → Run workflow**
+to perform the initial sync. Later runs start on the schedule automatically.
+
 ## Design document
 
 See [DESIGN.md](DESIGN.md) for the full write-up covering:

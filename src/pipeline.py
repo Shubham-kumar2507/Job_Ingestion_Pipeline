@@ -57,6 +57,10 @@ def add_demo_invalid_record(raw_jobs: list[dict]) -> list[dict]:
     return [*raw_jobs, demo_record]
 
 
+def jobs_to_persist(jobs: list[JobListing]) -> list[JobListing]:
+    return [job for job in jobs if job.source_payload.get("demo_fixture") is not True]
+
+
 async def run() -> None:
     load_dotenv()
     database_url = os.getenv("DATABASE_URL")
@@ -145,7 +149,7 @@ async def run() -> None:
                     error=str(error),
                 )
 
-        stored = upsert_jobs(database_url, valid_jobs)
+        stored = upsert_jobs(database_url, jobs_to_persist(valid_jobs))
         finish_run(
             database_url,
             run_id,

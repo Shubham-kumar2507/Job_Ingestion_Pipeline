@@ -21,9 +21,13 @@ templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 app = FastAPI(title="Job ingestion demo")
 
 
+def _database_backend() -> str:
+    return "PostgreSQL" if DATABASE_URL.startswith("postgres") else "SQLite"
+
+
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request, limit: int = 20):
-    """Thin proof-of-life dashboard reading from the pipeline's SQLite DB."""
+    """Thin proof-of-life dashboard reading from the configured database."""
     initialize_database(DATABASE_URL)
     jobs, last_run, streak, llm_repairs, total_listings = dashboard_data(DATABASE_URL, limit=max(1, min(limit, 100)))
     return templates.TemplateResponse(
@@ -35,6 +39,7 @@ def home(request: Request, limit: int = 20):
             "streak": streak,
             "llm_repairs": llm_repairs,
             "total_listings": total_listings,
+            "database_backend": _database_backend(),
         },
     )
 

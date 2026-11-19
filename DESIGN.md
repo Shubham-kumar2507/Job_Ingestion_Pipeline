@@ -6,9 +6,9 @@
 
 **Differentiators:**
 
-1. **LLM fallback parser (Phase 3):** When deterministic Pydantic validation rejects a record, the pipeline optionally invokes Groq's `openai/gpt-oss-20b` model to extract the same normalized schema from the raw data. This is the direct, demonstrable answer to "what keeps the pipeline running when markup changes?"
+1. **LLM fallback parser (Phase 3):** When deterministic Pydantic validation rejects a record, the pipeline optionally invokes Gemini or Groq to extract the same normalized schema from the raw data. This is the direct, demonstrable answer to "what keeps the pipeline running when markup changes?"
 2. **Deterministic enrichment layer:** Every validated listing is enriched with extracted skills, inferred seniority level, and work model classification (remote/hybrid/onsite) — all deterministic, zero-cost regex patterns. This is the optional stretch goal realized.
-3. **Thin proof-of-life dashboard (Phase 4):** A FastAPI + Jinja2 page that reads from the same SQLite database used by the pipeline, showing last-run status, streak, stored/invalid counts, LLM repair audit log, enrichment data, and the newest listings.
+3. **Thin proof-of-life dashboard (Phase 4):** A FastAPI + Jinja2 page that reads from the same configured database used by the pipeline, showing last-run status, streak, stored/invalid counts, LLM repair audit log, enrichment data, and the newest listings.
 
 Everything past the core pipeline is time-permitting.
 
@@ -127,7 +127,7 @@ RemoteOK JSON API
          │ valid JobListing       │ re-validate repaired dict
          ▼                        ▼
 ┌──────────────────┐
-│  SQLite upsert   │    ON CONFLICT (source, external_id) → UPDATE
+│  Database upsert │    PostgreSQL in production; SQLite for local tests
 │  via SQLAlchemy  │    repeat runs update, never duplicate
 └──────────────────┘
          │
@@ -162,13 +162,13 @@ RemoteOK JSON API
 
 ### 4.1 When it triggers
 
-The Groq LLM fallback is **not** a per-listing enrichment path. It is:
+The Gemini/Groq LLM fallback is **not** a per-listing enrichment path. It is:
 - **Disabled by default** (`LLM_FALLBACK_ENABLED=false`)
 - Triggered **only after** Pydantic `ValidationError` on a specific record
 - **Capped per run** at `LLM_FALLBACK_MAX_CALLS` (default: 5)
 - Applied to the **minimum useful context**: one truncated raw record + the validation error message
 
-The fallback uses Groq JSON mode. The prompt restricts the allowed normalized field names, and the returned object is still re-validated by Pydantic before it can be stored. `GROQ_API_KEY` is environment-only and is never committed.
+The selected provider returns structured JSON. The prompt restricts the allowed normalized field names, and the returned object is re-validated by Pydantic before use. `GEMINI_API_KEY` and `GROQ_API_KEY` are environment-only and are never committed.
 
 ### 4.2 Cost/latency trade-off
 
@@ -188,7 +188,7 @@ Instead of a theoretical answer, this is a **real, demonstrable mechanism**: the
 
 ### Demo fixture
 
-`DEMO_INJECT_INVALID_RECORD=true` is a presentation-only toggle. It appends one clearly labelled, intentionally incomplete normalized record after the real RemoteOK response has been parsed; the API response itself is never altered. The fixture fails deterministic validation because title and company are blank but includes those values in its raw description, visibly exercising exactly one Groq fallback attempt. The toggle defaults to `false` and should remain off in normal runs.
+`DEMO_INJECT_INVALID_RECORD=true` is a presentation-only toggle. It appends one clearly labelled, intentionally incomplete normalized record after the real RemoteOK response has been parsed; the API response itself is never altered. The fixture fails deterministic validation because title and company are blank but includes those values in its raw description, visibly exercising one fallback attempt. Demo fixtures are not persisted.
 
 ---
 
@@ -202,7 +202,7 @@ Instead of a theoretical answer, this is a **real, demonstrable mechanism**: the
 | **ToS compliance** | The live demo uses only RemoteOK's public, unauthenticated JSON API. A production integration with a ToS-protected site (LinkedIn, Indeed, Naukri) requires either an official API, a partner data feed, or explicit written permission |
 | **Rate respect** | Even against a permissive API, the pipeline paces requests (2–6 s random delay) and implements backoff. Good citizenship is not optional |
 | **No credential stuffing** | The pipeline never logs into any service, creates accounts, or simulates user sessions |
-| **Data handling** | Scraped data is stored locally in SQLite. No PII processing beyond what the source API publicly exposes |
+| **Data handling** | Production data is stored in PostgreSQL; SQLite is retained for local tests. No PII processing beyond what the source API publicly exposes |
 
 ### 5.2 The realistic production path
 
@@ -216,7 +216,7 @@ For a real product that needs job data from LinkedIn/Indeed:
 
 ## 6. Demo surface
 
-A thin FastAPI + Jinja2 page at `/` reads the same SQLite database used by the pipeline. It displays:
+A thin FastAPI + Jinja2 page at `/` reads the same configured database used by the pipeline. It displays:
 
 - **Last-run status** (success/failed) with timestamp
 - **Current streak** (consecutive same-status runs)
@@ -269,7 +269,7 @@ The enrichment is:
 │   ├── models.py         # Pydantic JobListing model
 │   ├── parsers.py        # Source-specific field mapping (RemoteOK)
 │   ├── pipeline.py       # Orchestration: fetch → parse → validate → enrich → store
-│   ├── storage.py        # SQLAlchemy models, SQLite upsert, run tracking
+│   ├── storage.py        # SQLAlchemy models, PostgreSQL/SQLite upsert, run tracking
 │   └── templates/
 │       └── index.html    # Dashboard Jinja2 template (dark-mode glassmorphism)
 └── tests/
@@ -278,5 +278,5 @@ The enrichment is:
     ├── test_llm_fallback.py # Mock-based LLM fallback repair tests
     ├── test_parsers.py   # Parser, model, and circuit breaker tests
     ├── test_pipeline.py  # Pipeline fixture tests
-    └── test_storage.py   # SQLite upsert tests
+    └── test_storage.py   # PostgreSQL/SQLite upsert tests
 ```

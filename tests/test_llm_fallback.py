@@ -16,7 +16,20 @@ def _make_fallback(enabled=True, max_calls=5):
 
 def test_default_model_is_available_on_current_groq_accounts(monkeypatch):
     monkeypatch.delenv("LLM_FALLBACK_MODEL", raising=False)
+    monkeypatch.delenv("LLM_FALLBACK_PROVIDER", raising=False)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     assert LLMFallback.from_environment().model == "openai/gpt-oss-20b"
+
+
+def test_gemini_key_selects_gemini_provider_and_model(monkeypatch):
+    monkeypatch.delenv("LLM_FALLBACK_PROVIDER", raising=False)
+    monkeypatch.delenv("LLM_FALLBACK_MODEL", raising=False)
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+
+    fallback = LLMFallback.from_environment()
+
+    assert fallback.provider == "gemini"
+    assert fallback.model == "gemini-3.5-flash-lite"
 
 
 # ──────────────────────────────────────────────
@@ -72,6 +85,26 @@ def test_repair_returns_extracted_fields_on_success():
     assert result["title"] == "AI Engineer"
     assert result["company"] == "Acme Labs"
     assert fb.calls_used == 1
+
+
+def test_gemini_repair_returns_extracted_fields():
+    fb = LLMFallback(enabled=True, model="gemini-test", max_calls=5, provider="gemini")
+    response = MagicMock()
+    response.output_text = json.dumps({"title": "AI Engineer", "company": "Acme Labs"})
+    response.usage = MagicMock(total_input_tokens=100, total_output_tokens=20, total_tokens=120)
+
+    with patch.dict("os.environ", {"GEMINI_API_KEY": "test-key"}, clear=False):
+        with patch("src.llm_fallback.genai.Client") as MockGemini:
+            mock_client = MagicMock()
+            mock_client.interactions.create.return_value = response
+            MockGemini.return_value = mock_client
+
+            result = asyncio.run(fb.repair({"title": "", "company": ""}, "title must not be blank"))
+
+    assert result == {"title": "AI Engineer", "company": "Acme Labs"}
+    assert fb.calls_used == 1
+    MockGemini.assert_called_once_with(api_key="test-key")
+    mock_client.interactions.create.assert_called_once()
 
 
 # ──────────────────────────────────────────────

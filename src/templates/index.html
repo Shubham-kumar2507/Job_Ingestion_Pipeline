@@ -500,7 +500,7 @@
         <h1>Job Ingestion Pipeline</h1>
       </div>
       <p class="header-subtitle">
-        RemoteOK JSON API → httpx async fetch with retry &amp; pacing → Pydantic validation → LLM fallback repair → SQLite upsert
+        RemoteOK JSON API → httpx async fetch with retry &amp; pacing → Pydantic validation → LLM fallback repair → {{ database_backend }} upsert
       </p>
       <div class="header-badges">
         <span class="badge badge-live">Live Demo</span>
@@ -676,7 +676,7 @@
     </section>
 
     <footer>
-      Job Ingestion Pipeline · Source: <a href="https://remoteok.com/api" rel="noreferrer">RemoteOK Public API</a> · No ToS-protected sites scraped · Built with FastAPI + SQLite
+      Job Ingestion Pipeline · Source: <a href="https://remoteok.com/api" rel="noreferrer">RemoteOK Public API</a> · No ToS-protected sites scraped · Built with FastAPI + {{ database_backend }}
     </footer>
   </div>
   <script>

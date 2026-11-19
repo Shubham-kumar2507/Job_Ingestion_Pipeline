@@ -67,26 +67,43 @@ RemoteOK JSON API
 
 ## LLM fallback
 
-Disabled by default. To enable:
+The fallback can use Gemini (recommended) or Groq. It is called only when a
+record fails deterministic Pydantic validation; valid records do not trigger
+LLM calls. Enable it locally with:
 
 ```env
 LLM_FALLBACK_ENABLED=true
-GROQ_API_KEY=your_rotated_key_here
-LLM_FALLBACK_MODEL=openai/gpt-oss-20b
+LLM_FALLBACK_PROVIDER=gemini
+GEMINI_API_KEY=your_api_key
+LLM_FALLBACK_MODEL=gemini-3.5-flash-lite
 LLM_FALLBACK_MAX_CALLS=5
 ```
 
-The fallback fires **only** for records that Pydantic rejected. It's capped at 5 calls per run by default, and its output must pass the exact same validation. Logs include invocation count, latency, and token usage so the cost/latency trade-off is visible, not hidden.
+Groq remains supported with `LLM_FALLBACK_PROVIDER=groq` and `GROQ_API_KEY`.
+Calls are capped at 5 per run by default, and output must pass the same
+validation before it can be used.
+
+The scheduled job runs in GitHub Actions, not Vercel. Set `GEMINI_API_KEY` as
+a repository Actions secret; setting it only in Vercel does not make it
+available to the ingestion workflow. The workflow enables fallback, but
+ordinary successful feed records still result in zero calls.
 
 ### Demonstrate the fallback
 
-For a presentation, set this additional flag in your local `.env`:
+In GitHub, choose **Actions → Ingest RemoteOK jobs → Run workflow** and enable
+the `demo_llm_fallback` option. This makes one Gemini repair call using a
+synthetic invalid record; the fixture is not saved to the listings table.
+The schedule never injects the fixture.
+
+For a local demo, set this additional flag in `.env`:
 
 ```env
 DEMO_INJECT_INVALID_RECORD=true
 ```
 
-The real RemoteOK payload remains untouched. After parsing, the pipeline adds one labelled fixture with a missing title and company but an explicit description containing both. This forces one Pydantic failure and, when the Groq fallback is enabled, one capped LLM repair attempt. Set the flag back to `false` after the demo.
+The real RemoteOK payload remains untouched. The fixture has a missing title
+and company but a description containing both, forcing one validation failure
+and one capped repair attempt. It is excluded from persistence.
 
 ## Enrichment
 
@@ -96,7 +113,7 @@ Every validated listing is enriched deterministically (no API calls):
 - **Seniority inference**: Detects intern → junior → mid → senior → staff → principal → lead → manager → director → VP → C-level
 - **Work model detection**: Flags remote, hybrid, or onsite from title/description/location
 
-All three fields are stored in SQLite and surfaced on the dashboard.
+All three fields are stored in the configured database and surfaced on the dashboard.
 
 ## Dashboard
 
@@ -124,8 +141,7 @@ separate process and does not run automatically on Vercel; set the same
 `DATABASE_URL` locally before running `python -m src.pipeline` to populate
 the dashboard.
 
-Without `DATABASE_URL`, Vercel uses a temporary SQLite database under `/tmp`.
-That is useful for a smoke test, but its data is not durable. Do not commit
+The app retains SQLite support for local development and tests. Do not commit
 database URLs or API keys.
 
 ### Automate ingestion
@@ -134,8 +150,10 @@ The GitHub Actions workflow at `.github/workflows/ingest.yml` polls the
 RemoteOK feed every 15 minutes (best effort; scheduled runs can be delayed).
 In the repository, open **Settings → Secrets and variables → Actions** and add
 a repository secret named `DATABASE_URL` with the same PostgreSQL connection
-URL used by Vercel. Then open **Actions → Ingest RemoteOK jobs → Run workflow**
-to perform the initial sync. Later runs start on the schedule automatically.
+URL used by Vercel, plus a `GEMINI_API_KEY` secret for LLM fallback. These
+secrets must be added to GitHub separately; Vercel variables are not shared
+with Actions. Then open **Actions → Ingest RemoteOK jobs → Run workflow** to
+perform a sync. Later runs start on the schedule automatically.
 
 ## Design document
 
